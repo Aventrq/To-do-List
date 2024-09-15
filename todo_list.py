@@ -3,7 +3,6 @@ from tkinter import messagebox
 from tkinter import ttk
 import json
 
-# Save listbox data to JSON file
 def save_data():
     listbox_items = listbox.get(0, tk.END)
     completed_listbox_items = completed_listbox.get(0, tk.END)
@@ -17,7 +16,6 @@ def save_data():
         json.dump(data, f)
     print("Data saved successfully!")
 
-# Load data from JSON file into listboxes
 def load_data():
     global original_tasks
     try:
@@ -44,19 +42,20 @@ def add_task():
     priority = priority_var.get()
     if task and 'Type task:' not in task:
         formatted_task = f"{task} - {priority}"
+        original_tasks.append(formatted_task)
         listbox.insert(tk.END, formatted_task)
         entry.delete(0, tk.END)
-        update_original_tasks()
-        # doesn't work properly // causing issues /// search_tasks()  # Update search results after completing a task
+        refresh_listbox()
     else:
         messagebox.showwarning("Warning", "You must enter a task.")
 
 def del_task():
     try:
         selected_index = listbox.curselection()[0]
+        task_to_remove = listbox.get(selected_index)
+        original_tasks.remove(task_to_remove)
         listbox.delete(selected_index)
-        update_original_tasks()
-        # doesn't work properly // causing issues /// search_tasks()  # Update search results after completing a task
+        refresh_listbox()
     except IndexError:
         messagebox.showwarning("Warning", "You must select a task to delete.")
 
@@ -64,19 +63,24 @@ def complete_task():
     try:
         selected_index = listbox.curselection()[0]
         selected_text = listbox.get(selected_index)
+        original_tasks.remove(selected_text)
         listbox.delete(selected_index)
         completed_listbox.insert(tk.END, selected_text)
-        update_original_tasks()
-        # doesn't work properly // causing issues /// search_tasks()  # Update search results after completing a task
+        refresh_listbox()
     except IndexError:
         messagebox.showwarning("Warning", "You must select a task to complete.")
 
 def search_tasks(event=None):
     query = search_entry.get().lower()
+    global current_query
+    current_query = query
+    refresh_listbox()
+
+def refresh_listbox():
     listbox.delete(0, tk.END)
     
-    if query and 'Search tasks...' not in query:
-        filtered_tasks = [task for task in original_tasks if query in task.lower()]
+    if current_query and 'Search tasks...' not in current_query:
+        filtered_tasks = [task for task in original_tasks if current_query in task.lower()]
         for task in filtered_tasks:
             listbox.insert(tk.END, task)
     else:
@@ -84,12 +88,9 @@ def search_tasks(event=None):
             listbox.insert(tk.END, task)
 
 def sort_tasks():
-    # Get all items from the listbox
     tasks = listbox.get(0, tk.END)
     
-    # Define a key function to sort by priority and then by name
     def get_sort_key(task):
-        # Extract priority
         if 'high' in task.lower():
             priority = 0
         elif 'medium' in task.lower():
@@ -97,15 +98,12 @@ def sort_tasks():
         else:
             priority = 2
         
-        # Extract name (everything before the ' - ')
         name = task.split(' - ')[0]
         
         return (priority, name.lower())
     
-    # Sort the tasks
     sorted_tasks = sorted(tasks, key=get_sort_key)
     
-    # Clear the listbox and insert sorted tasks
     listbox.delete(0, tk.END)
     for task in sorted_tasks:
         listbox.insert(tk.END, task)
@@ -139,15 +137,16 @@ root = tk.Tk()
 root.title("To-Do List")
 root.geometry("600x450")
 
-# Initialize list
+# Initialize list and search query
 original_tasks = []
+current_query = ''
 
 # Create and place the search entry box
 search_entry = tk.Entry(root, fg='grey')
 search_entry.insert(0, 'Search tasks...')
 search_entry.bind('<FocusIn>', on_search_focus_in)
 search_entry.bind('<FocusOut>', on_search_focus_out)
-search_entry.bind('<KeyRelease>', search_tasks)  # Bind to KeyRelease event
+search_entry.bind('<KeyRelease>', search_tasks)
 search_entry.grid(row=0, column=0, columnspan=4, pady=10, padx=10, sticky="ew")
 
 # Create and place the entry box
